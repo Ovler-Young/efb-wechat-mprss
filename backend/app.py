@@ -104,7 +104,9 @@ async def get_rss_feed(puid: str, request: Request, limit: int = 100):
 
 
 # Serve frontend
-FRONTEND_DIR = Path(os.environ.get("FRONTEND_DIR", Path.cwd() / "frontend"))
+# Default to frontend/ directory relative to this module's parent (project root)
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+FRONTEND_DIR = Path(os.environ.get("FRONTEND_DIR", _PROJECT_ROOT / "frontend"))
 
 
 @app.get("/", response_class=HTMLResponse)
