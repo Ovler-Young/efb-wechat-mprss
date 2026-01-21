@@ -98,24 +98,3 @@ def generate_rss_feed(
     xml_str = tostring(rss, encoding="unicode")
     dom = minidom.parseString(xml_str)
     return dom.toprettyxml(indent="  ", encoding=None)
-
-
-if __name__ == "__main__":
-    # Quick test
-    test_messages = [
-        {
-            "title": "Test Article",
-            "description": "This is a test article description.",
-            "url": "https://mp.weixin.qq.com/s/test123",
-            "image": "https://example.com/image.jpg",
-            "pub_date": datetime.now(),
-        }
-    ]
-    
-    rss = generate_rss_feed(
-        mp_name="Test MP",
-        mp_signature="Test signature",
-        messages=test_messages,
-        feed_url="http://localhost:8080/api/rss/test"
-    )
-    print(rss)

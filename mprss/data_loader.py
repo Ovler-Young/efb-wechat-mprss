@@ -162,21 +162,3 @@ def get_mps_with_puid(
         })
     
     return result
-
-
-if __name__ == "__main__":
-    # Quick test
-    import yaml
-    
-    config_path = Path(__file__).parent.parent / "config.yaml"
-    with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
-    
-    mps = get_mps_with_puid(
-        config["wxpy_pkl_path"],
-        config["wxpy_puid_pkl_path"]
-    )
-    
-    print(f"Found {len(mps)} public accounts with puid:")
-    for mp in mps[:5]:
-        print(f"  - {mp['name']} ({mp['puid']})")

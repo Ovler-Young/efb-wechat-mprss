@@ -225,20 +225,3 @@ def batch_article_counts(db_path: str, puids: List[str]) -> Dict[str, int]:
         result[puid] = counts.get(uid, 0)
     
     return result
-
-
-if __name__ == "__main__":
-    # Quick test
-    import yaml
-    
-    config_path = Path(__file__).parent.parent / "config.yaml"
-    with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
-    
-    # Test with a known puid
-    test_puid = "2a44d45d"
-    messages = get_messages_for_mp(config["tgdata_db_path"], test_puid, limit=5)
-    
-    print(f"Found {len(messages)} messages for puid {test_puid}:")
-    for msg in messages:
-        print(f"  - {msg['title'][:50]}... ({msg['pub_date']})")
