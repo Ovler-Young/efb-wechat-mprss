@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微信公众号 RSS 生成器</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📰 微信公众号 RSS 生成器</h1>
+            <p class="subtitle">从 EFB 消息记录生成 RSS 订阅源</p>
+        </header>
+
+        <div class="search-box">
+            <input 
+                type="text" 
+                id="search" 
+                placeholder="搜索公众号名称..." 
+                autocomplete="off"
+            >
+        </div>
+
+        <div class="stats" id="stats">正在加载...</div>
+
+        <div class="mp-grid" id="mp-grid">
+            <!-- MP cards will be inserted here -->
+        </div>
+
+        <!-- Modal for RSS URL -->
+        <div class="modal" id="modal" onclick="closeModal(event)">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <span class="close-btn" onclick="closeModal()">&times;</span>
+                <div class="mp-header" id="modal-header">
+                    <img id="modal-img" src="" alt="">
+                    <div>
+                        <h2 id="modal-name"></h2>
+                        <p id="modal-signature"></p>
+                    </div>
+                </div>
+                <div class="rss-section">
+                    <label>RSS 订阅链接:</label>
+                    <div class="rss-url-box">
+                        <input type="text" id="rss-url" readonly>
+                        <button onclick="copyRssUrl()">复制</button>
+                    </div>
+                    <p class="copy-hint" id="copy-hint"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allMps = [];
+        
+        async function loadMps() {
+            try {
+                const res = await fetch('/api/mps');
+                allMps = await res.json();
+                renderMps(allMps);
+                document.getElementById('stats').textContent = 
+                    `共找到 ${allMps.length} 个公众号`;
+            } catch (err) {
+                document.getElementById('stats').textContent = '加载失败: ' + err.message;
+            }
+        }
+        
+        function renderMps(mps) {
+            const grid = document.getElementById('mp-grid');
+            grid.innerHTML = mps.map(mp => `
+                <div class="mp-card" onclick="showRssModal('${mp.puid}')">
+                    <img src="${getHeadImgUrl(mp.head_img)}" alt="${mp.name}" 
+                         onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23667eea%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22>${mp.name.charAt(0)}</text></svg>'">
+                    <div class="mp-info">
+                        <h3>${escapeHtml(mp.name)}</h3>
+                        <p>${escapeHtml(mp.signature || '暂无简介')}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function getHeadImgUrl(path) {
+            if (!path) return '';
+            // WeChat head images need the wx.qq.com base
+            if (path.startsWith('/cgi-bin/')) {
+                return 'https://wx.qq.com' + path;
+            }
+            return path;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function showRssModal(puid) {
+            const mp = allMps.find(m => m.puid === puid);
+            if (!mp) return;
+            
+            document.getElementById('modal-img').src = getHeadImgUrl(mp.head_img);
+            document.getElementById('modal-name').textContent = mp.name;
+            document.getElementById('modal-signature').textContent = mp.signature || '暂无简介';
+            
+            const rssUrl = `${window.location.origin}/api/rss/${puid}`;
+            document.getElementById('rss-url').value = rssUrl;
+            document.getElementById('copy-hint').textContent = '';
+            
+            document.getElementById('modal').classList.add('show');
+        }
+        
+        function closeModal(event) {
+            if (!event || event.target.id === 'modal') {
+                document.getElementById('modal').classList.remove('show');
+            }
+        }
+        
+        function copyRssUrl() {
+            const input = document.getElementById('rss-url');
+            input.select();
+            document.execCommand('copy');
+            document.getElementById('copy-hint').textContent = '✓ 已复制到剪贴板';
+        }
+        
+        // Search functionality
+        document.getElementById('search').addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            const filtered = allMps.filter(mp => 
+                mp.name.toLowerCase().includes(query) ||
+                (mp.signature && mp.signature.toLowerCase().includes(query))
+            );
+            renderMps(filtered);
+            document.getElementById('stats').textContent = 
+                query ? `找到 ${filtered.length} 个匹配` : `共 ${allMps.length} 个公众号`;
+        });
+        
+        // Close modal on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+        
+        // Initial load
+        loadMps();
+    </script>
+</body>
+</html>
