@@ -226,13 +226,13 @@
                 
                 checked++;
                 document.getElementById('stats').textContent = 
-                    `检查进度: ${checked}/${total} | 有文章: ${withArticles} | 无文章: ${empty} | 失败: ${total - checked}`;
+                    `检查进度: ${checked}/${total} | 有文章: ${withArticles} | 无文章: ${empty} | 失败: ${checked - withArticles - empty} | 未检查: ${total - checked}`;
             }
             
             // Final reorder and stats
             reorderMps();
             document.getElementById('stats').textContent = 
-                `共 ${total} 个公众号 | 有文章: ${withArticles} | 无文章: ${empty} | 失败: ${total - checked}`;
+                `共 ${total} 个公众号 | 有文章: ${withArticles} | 无文章: ${empty} | 失败: ${total - withArticles - empty}`;
         }
         
         function reorderMps() {
