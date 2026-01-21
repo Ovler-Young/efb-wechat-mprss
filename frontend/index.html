@@ -197,43 +197,40 @@
         
         async function checkAllMpsRss() {
             const total = allMps.length;
-            let checked = 0;
-            let withArticles = 0;
-            let empty = 0;
+            document.getElementById('stats').textContent = `正在检查 ${total} 个公众号...`;
             
-            for (const mp of allMps) {
-                const card = document.querySelector(`.mp-card[data-puid="${mp.puid}"]`);
-                if (!card) continue;
+            try {
+                const res = await fetch(`${window.location.origin}/api/has-articles-batch`);
+                const data = await res.json();
                 
-                const statusEl = card.querySelector('.mp-status');
-                statusEl.textContent = '检查中...';
+                let withArticles = 0;
+                let empty = 0;
                 
-                try {
-                    const res = await fetch(`${window.location.origin}/api/has-articles/${mp.puid}`);
-                    const data = await res.json();
+                for (const mp of allMps) {
+                    const card = document.querySelector(`.mp-card[data-puid="${mp.puid}"]`);
+                    if (!card) continue;
                     
-                    if (!data.has_articles) {
+                    const statusEl = card.querySelector('.mp-status');
+                    const hasArticles = data[mp.puid];
+                    
+                    if (hasArticles === undefined) {
+                        statusEl.textContent = '未知';
+                    } else if (!hasArticles) {
                         card.classList.add('mp-card-empty');
                         statusEl.textContent = '无文章';
                         empty++;
                     } else {
                         statusEl.textContent = '有文章';
                         withArticles++;
-                        reorderMps();
                     }
-                } catch (err) {
-                    statusEl.textContent = '检查失败';
                 }
                 
-                checked++;
+                reorderMps();
                 document.getElementById('stats').textContent = 
-                    `检查进度: ${checked}/${total} | 有文章: ${withArticles} | 无文章: ${empty} | 失败: ${checked - withArticles - empty} | 未检查: ${total - checked}`;
+                    `共 ${total} 个公众号 | 有文章: ${withArticles} | 无文章: ${empty}`;
+            } catch (err) {
+                document.getElementById('stats').textContent = `检查失败: ${err.message}`;
             }
-            
-            // Final reorder and stats
-            reorderMps();
-            document.getElementById('stats').textContent = 
-                `共 ${total} 个公众号 | 有文章: ${withArticles} | 无文章: ${empty} | 失败: ${total - withArticles - empty}`;
         }
         
         function reorderMps() {

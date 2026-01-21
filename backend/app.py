@@ -13,7 +13,7 @@ from fastapi.responses import Response, HTMLResponse
 from pydantic import BaseModel
 
 from .data_loader import get_mps_with_puid
-from .db_reader import get_messages_for_mp, has_articles_for_mp
+from .db_reader import get_messages_for_mp, has_articles_for_mp, batch_has_articles
 from .rss_generator import generate_rss_feed
 
 
@@ -125,6 +125,22 @@ async def check_has_articles(puid: str):
     has_articles = has_articles_for_mp(config["tgdata_db_path"], puid)
     
     return {"has_articles": has_articles}
+
+
+@app.get("/api/has-articles-batch")
+async def check_has_articles_batch():
+    """
+    Check all public accounts for articles in a single query.
+    
+    Returns:
+        {puid: bool, ...} for all MPs
+    """
+    mps = get_cached_mps()
+    puids = [mp["puid"] for mp in mps]
+    
+    result = batch_has_articles(config["tgdata_db_path"], puids)
+    
+    return result
 
 
 # Serve frontend

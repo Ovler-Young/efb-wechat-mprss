@@ -152,6 +152,43 @@ def has_articles_for_mp(db_path: str, puid: str) -> bool:
     return has_articles
 
 
+def batch_has_articles(db_path: str, puids: List[str]) -> Dict[str, bool]:
+    """
+    Check multiple public accounts for articles in a single query.
+    
+    Returns a dict mapping puid -> has_articles (bool).
+    """
+    if not puids:
+        return {}
+    
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # Build slave_origin_uids
+    uid_to_puid = {f"blueset.wechat {puid}": puid for puid in puids}
+    placeholders = ",".join("?" * len(puids))
+    
+    # Single query to find all puids that have at least one Link message
+    cursor.execute(
+        f"""
+        SELECT DISTINCT slave_origin_uid FROM msglog
+        WHERE slave_origin_uid IN ({placeholders})
+          AND msg_type = 'Link'
+        """,
+        list(uid_to_puid.keys())
+    )
+    
+    has_articles_uids = {row[0] for row in cursor.fetchall()}
+    conn.close()
+    
+    # Build result dict
+    result = {}
+    for uid, puid in uid_to_puid.items():
+        result[puid] = uid in has_articles_uids
+    
+    return result
+
+
 if __name__ == "__main__":
     # Quick test
     import yaml
