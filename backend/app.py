@@ -13,7 +13,7 @@ from fastapi.responses import Response, HTMLResponse
 from pydantic import BaseModel
 
 from .data_loader import get_mps_with_puid
-from .db_reader import get_messages_for_mp, has_articles_for_mp, batch_has_articles
+from .db_reader import get_messages_for_mp, has_articles_for_mp, batch_has_articles, batch_article_counts
 from .rss_generator import generate_rss_feed
 
 
@@ -139,6 +139,22 @@ async def check_has_articles_batch():
     puids = [mp["puid"] for mp in mps]
     
     result = batch_has_articles(config["tgdata_db_path"], puids)
+    
+    return result
+
+
+@app.get("/api/article-counts-batch")
+async def get_article_counts_batch():
+    """
+    Get article counts for all public accounts in a single query.
+    
+    Returns:
+        {puid: count, ...} for all MPs
+    """
+    mps = get_cached_mps()
+    puids = [mp["puid"] for mp in mps]
+    
+    result = batch_article_counts(config["tgdata_db_path"], puids)
     
     return result
 

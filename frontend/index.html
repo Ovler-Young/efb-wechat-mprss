@@ -200,7 +200,7 @@
             document.getElementById('stats').textContent = `正在检查 ${total} 个公众号...`;
             
             try {
-                const res = await fetch(`${window.location.origin}/api/has-articles-batch`);
+                const res = await fetch(`${window.location.origin}/api/article-counts-batch`);
                 const data = await res.json();
                 
                 let withArticles = 0;
@@ -211,16 +211,16 @@
                     if (!card) continue;
                     
                     const statusEl = card.querySelector('.mp-status');
-                    const hasArticles = data[mp.puid];
+                    const count = data[mp.puid];
                     
-                    if (hasArticles === undefined) {
+                    if (count === undefined) {
                         statusEl.textContent = '未知';
-                    } else if (!hasArticles) {
+                    } else if (count === 0) {
                         card.classList.add('mp-card-empty');
                         statusEl.textContent = '无文章';
                         empty++;
                     } else {
-                        statusEl.textContent = '有文章';
+                        statusEl.textContent = `${count} 篇`;
                         withArticles++;
                     }
                 }

@@ -189,6 +189,44 @@ def batch_has_articles(db_path: str, puids: List[str]) -> Dict[str, bool]:
     return result
 
 
+def batch_article_counts(db_path: str, puids: List[str]) -> Dict[str, int]:
+    """
+    Count articles for multiple public accounts in a single query.
+    
+    Returns a dict mapping puid -> count.
+    """
+    if not puids:
+        return {}
+    
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # Build slave_origin_uids
+    uid_to_puid = {f"blueset.wechat {puid}": puid for puid in puids}
+    placeholders = ",".join("?" * len(puids))
+    
+    # Single query to count all articles per puid
+    cursor.execute(
+        f"""
+        SELECT slave_origin_uid, COUNT(*) FROM msglog
+        WHERE slave_origin_uid IN ({placeholders})
+          AND msg_type = 'Link'
+        GROUP BY slave_origin_uid
+        """,
+        list(uid_to_puid.keys())
+    )
+    
+    counts = {row[0]: row[1] for row in cursor.fetchall()}
+    conn.close()
+    
+    # Build result dict (default to 0 for those not found)
+    result = {}
+    for uid, puid in uid_to_puid.items():
+        result[puid] = counts.get(uid, 0)
+    
+    return result
+
+
 if __name__ == "__main__":
     # Quick test
     import yaml
