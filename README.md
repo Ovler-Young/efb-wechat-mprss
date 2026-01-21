@@ -2,27 +2,46 @@
 
 Generate RSS feeds for WeChat public accounts from EFB message logs.
 
-## Setup
+## Installation
 
 ```bash
-uv venv
-uv pip install -e .
+pip install -U git+https://github.com/Ovler-Young/efb-wechat-mprss
 ```
-
-## Usage
-
-```bash
-# Start the server
-cd d:\dev\efb-wechat-mprss
-.venv\Scripts\activate
-python -m backend.app
-```
-
-Then open http://localhost:8080
 
 ## Configuration
 
-Edit `config.yaml` to set:
-- `wxpy_pkl_path`: Path to wxpy.pkl
-- `wxpy_puid_pkl_path`: Path to wxpy_puid.pkl  
-- `tgdata_db_path`: Path to tgdata.db
+Create a configuration directory under your EFB profile:
+
+```bash
+mkdir -p ~/.ehforwarderbot/profiles/default/ovler.mprss
+```
+
+Then create `config.yaml` in that directory:
+
+```bash
+nano ~/.ehforwarderbot/profiles/default/ovler.mprss/config.yaml
+```
+
+Example configuration:
+
+```yaml
+wxpy_pkl_path: "../blueset.wechat/wxpy.pkl"
+wxpy_puid_pkl_path: "../blueset.wechat/wxpy_puid.pkl"
+tgdata_db_path: "../blueset.telegram/tgdata.db"
+server:
+  host: "0.0.0.0"
+  port: 23185
+```
+
+> **Note**: Paths are relative to the configuration directory.
+
+## Usage
+
+Start the server from your configuration directory:
+
+```bash
+cd ~/.ehforwarderbot/profiles/default/ovler.mprss
+python -m backend.app
+```
+
+Then open `http://localhost:23185` in your browser.
