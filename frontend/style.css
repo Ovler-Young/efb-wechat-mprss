@@ -78,6 +78,7 @@ header h1 {
     display: flex;
     align-items: center;
     padding: 1rem;
+    position: relative;
 }
 
 .mp-card:hover {
@@ -92,6 +93,26 @@ header h1 {
     object-fit: cover;
     flex-shrink: 0;
     background: #f0f0f0;
+}
+
+.mp-card-empty {
+    opacity: 0.5;
+    filter: grayscale(0.6);
+}
+
+.mp-card-empty:hover {
+    opacity: 0.7;
+}
+
+.mp-status {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    font-size: 0.7rem;
+    color: #888;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 0.2rem 0.5rem;
+    border-radius: 10px;
 }
 
 .mp-info {
