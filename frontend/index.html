@@ -22,7 +22,10 @@
             >
         </div>
 
-        <div class="stats" id="stats">正在加载...</div>
+        <div class="stats-bar">
+            <div class="stats" id="stats">正在加载...</div>
+            <button id="check-btn" class="check-btn" onclick="checkAllMpsRss()" disabled>检测文章</button>
+        </div>
 
         <div class="mp-grid" id="mp-grid">
             <!-- MP cards will be inserted here -->
@@ -44,7 +47,7 @@
                     <div class="rss-url-box">
                         <input type="text" id="rss-url" readonly>
                         <button onclick="copyRssUrl()">复制</button>
-                        <button onclick="loadRssPreview()" class="preview-btn">预览</button>
+                        <button onclick="window.open(document.getElementById('rss-url').value, '_blank')" class="preview-btn">打开</button>
                     </div>
                     <p class="copy-hint" id="copy-hint"></p>
                 </div>
@@ -188,7 +191,9 @@
         });
         
         // Initial load
-        loadMps().then(() => checkAllMpsRss());
+        loadMps().then(() => {
+            document.getElementById('check-btn').disabled = false;
+        });
         
         async function checkAllMpsRss() {
             const total = allMps.length;
