@@ -53,8 +53,8 @@ def get_messages_for_mp(
     for row in rows:
         msg = parse_message_row(row)
         if msg and msg.get("url"):
-            url = msg["url"]
-            # Only include mp.weixin.qq.com links
+            url = msg["url"].replace("http://", "https://")
+            # Only include mp.weixin.qq.com links, http or https
             if not url.startswith("https://mp.weixin.qq.com"):
                 continue
             # Deduplicate by URL
