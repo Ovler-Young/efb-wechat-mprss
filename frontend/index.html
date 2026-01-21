@@ -44,11 +44,18 @@
                     <div class="rss-url-box">
                         <input type="text" id="rss-url" readonly>
                         <button onclick="copyRssUrl()">复制</button>
+                        <button onclick="loadRssPreview()" class="preview-btn">预览</button>
                     </div>
                     <p class="copy-hint" id="copy-hint"></p>
                 </div>
+                <div class="rss-preview" id="rss-preview">
+                    <div class="rss-preview-loading" id="rss-preview-loading" style="display:none;">加载中...</div>
+                    <div class="rss-preview-list" id="rss-preview-list"></div>
+                </div>
             </div>
         </div>
+
+
     </div>
 
     <script>
@@ -70,7 +77,7 @@
             const grid = document.getElementById('mp-grid');
             grid.innerHTML = mps.map(mp => `
                 <div class="mp-card" onclick="showRssModal('${mp.puid}')">
-                    <img src="${getHeadImgUrl(mp.head_img)}" alt="${mp.name}" 
+                    <img src="${getHeadImgUrl(mp.head_img)}" alt="${mp.name}" loading="lazy"
                          onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23667eea%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22>${mp.name.charAt(0)}</text></svg>'">
                     <div class="mp-info">
                         <h3>${escapeHtml(mp.name)}</h3>
@@ -106,8 +113,11 @@
             const rssUrl = `${window.location.origin}/api/rss/${puid}`;
             document.getElementById('rss-url').value = rssUrl;
             document.getElementById('copy-hint').textContent = '';
+            document.getElementById('rss-preview-list').innerHTML = '';
+            document.getElementById('rss-preview-loading').style.display = 'none';
             
             document.getElementById('modal').classList.add('show');
+            loadRssPreview();
         }
         
         function closeModal(event) {
@@ -121,6 +131,42 @@
             input.select();
             document.execCommand('copy');
             document.getElementById('copy-hint').textContent = '✓ 已复制到剪贴板';
+        }
+        
+        async function loadRssPreview() {
+            const rssUrl = document.getElementById('rss-url').value;
+            const listEl = document.getElementById('rss-preview-list');
+            const loadingEl = document.getElementById('rss-preview-loading');
+            
+            listEl.innerHTML = '';
+            loadingEl.style.display = 'block';
+            
+            try {
+                const res = await fetch(rssUrl);
+                const text = await res.text();
+                const parser = new DOMParser();
+                const xml = parser.parseFromString(text, 'application/xml');
+                const items = xml.querySelectorAll('item');
+                
+                if (items.length === 0) {
+                    listEl.innerHTML = '<p class="rss-empty">暂无文章</p>';
+                } else {
+                    listEl.innerHTML = Array.from(items).slice(0, 10).map(item => {
+                        const title = item.querySelector('title')?.textContent || '无标题';
+                        const link = item.querySelector('link')?.textContent || '#';
+                        const pubDate = item.querySelector('pubDate')?.textContent || '';
+                        const date = pubDate ? new Date(pubDate).toLocaleDateString('zh-CN') : '';
+                        return `<a class="rss-item" href="${escapeHtml(link)}" target="_blank">
+                            <span class="rss-item-title">${escapeHtml(title)}</span>
+                            <span class="rss-item-date">${date}</span>
+                        </a>`;
+                    }).join('');
+                }
+            } catch (err) {
+                listEl.innerHTML = `<p class="rss-error">加载失败: ${escapeHtml(err.message)}</p>`;
+            } finally {
+                loadingEl.style.display = 'none';
+            }
         }
         
         // Search functionality
