@@ -2,6 +2,7 @@
 FastAPI application for WeChat MP RSS Generator.
 """
 
+import importlib.resources
 import os
 from pathlib import Path
 from typing import List, Optional
@@ -104,9 +105,32 @@ async def get_rss_feed(puid: str, request: Request, limit: int = 100):
 
 
 # Serve frontend
-# Default to frontend/ directory relative to this module's parent (project root)
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent
-FRONTEND_DIR = Path(os.environ.get("FRONTEND_DIR", _PROJECT_ROOT / "frontend"))
+# Priority: FRONTEND_DIR env var > installed package > project relative path
+def _get_frontend_dir() -> Path:
+    """Locate frontend directory."""
+    # 1. Environment variable override
+    if env_dir := os.environ.get("FRONTEND_DIR"):
+        return Path(env_dir)
+    
+    # 2. Try importlib.resources for installed package
+    try:
+        import frontend
+        # Python 3.9+: use importlib.resources.files()
+        frontend_path = importlib.resources.files(frontend)
+        # Convert to Path if possible
+        if hasattr(frontend_path, '_path'):
+            return Path(frontend_path._path)
+        # Fallback: use as_file for older Python
+        with importlib.resources.as_file(frontend_path) as p:
+            return Path(p)
+    except (ImportError, TypeError):
+        pass
+    
+    # 3. Fallback to project relative path (for development)
+    return Path(__file__).resolve().parent.parent / "frontend"
+
+
+FRONTEND_DIR = _get_frontend_dir()
 
 
 @app.get("/", response_class=HTMLResponse)
