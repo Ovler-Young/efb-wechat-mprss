@@ -141,7 +141,7 @@ def get_mps_with_puid(
     Get all public accounts with their puid mapped.
     
     Returns:
-        List of dicts with puid, name, signature, head_img.
+        List of dicts with puid, name, signature.
     """
     mp_list = get_mp_list(wxpy_pkl_path)
     puid_map = get_puid_map(wxpy_puid_pkl_path)
@@ -159,7 +159,6 @@ def get_mps_with_puid(
             "puid": puid,
             "name": mp.get("NickName", ""),
             "signature": mp.get("Signature", ""),
-            "head_img": mp.get("HeadImgUrl", ""),
         })
     
     return result

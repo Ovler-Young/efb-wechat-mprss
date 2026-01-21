@@ -36,7 +36,6 @@
             <div class="modal-content" onclick="event.stopPropagation()">
                 <span class="close-btn" onclick="closeModal()">&times;</span>
                 <div class="mp-header" id="modal-header">
-                    <img id="modal-img" src="" alt="">
                     <div>
                         <h2 id="modal-name"></h2>
                         <p id="modal-signature"></p>
@@ -80,8 +79,6 @@
             const grid = document.getElementById('mp-grid');
             grid.innerHTML = mps.map(mp => `
                 <div class="mp-card" data-puid="${mp.puid}" onclick="showRssModal('${mp.puid}')">
-                    <img src="${getHeadImgUrl(mp.head_img)}" alt="${mp.name}" loading="lazy"
-                         onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23667eea%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22>${mp.name.charAt(0)}</text></svg>'">
                     <div class="mp-info">
                         <h3>${escapeHtml(mp.name)}</h3>
                         <p>${escapeHtml(mp.signature || '暂无简介')}</p>
@@ -91,14 +88,7 @@
             `).join('');
         }
         
-        function getHeadImgUrl(path) {
-            if (!path) return '';
-            // WeChat head images need the wx.qq.com base
-            if (path.startsWith('/cgi-bin/')) {
-                return 'https://wx.qq.com' + path;
-            }
-            return path;
-        }
+
         
         function escapeHtml(text) {
             const div = document.createElement('div');
@@ -110,7 +100,7 @@
             const mp = allMps.find(m => m.puid === puid);
             if (!mp) return;
             
-            document.getElementById('modal-img').src = getHeadImgUrl(mp.head_img);
+
             document.getElementById('modal-name').textContent = mp.name;
             document.getElementById('modal-signature').textContent = mp.signature || '暂无简介';
             

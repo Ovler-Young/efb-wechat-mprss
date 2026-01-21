@@ -55,7 +55,6 @@ class MPInfo(BaseModel):
     puid: str
     name: str
     signature: str
-    head_img: str
 
 
 @app.get("/api/mps", response_model=List[MPInfo])
