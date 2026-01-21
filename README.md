@@ -41,7 +41,7 @@ Start the server from your configuration directory:
 
 ```bash
 cd ~/.ehforwarderbot/profiles/default/ovler.mprss
-python -m backend.app
+python -m mprss.app
 ```
 
 Then open `http://localhost:23185` in your browser.
