@@ -30,18 +30,24 @@ app = FastAPI(
 )
 
 
+# Hidden MP names - these will be excluded and always return "no articles"
+HIDDEN_MP_NAMES = {"微信支付", "微信收款助手"}
+
+
 # Cache for MP list (reloaded on startup or refresh)
 _mp_cache: Optional[List[dict]] = None
 
 
 def get_cached_mps(force_reload: bool = False) -> List[dict]:
-    """Get MPs with caching."""
+    """Get MPs with caching. Excludes hidden MPs from HIDDEN_MP_NAMES."""
     global _mp_cache
     if _mp_cache is None or force_reload:
-        _mp_cache = get_mps_with_puid(
+        all_mps = get_mps_with_puid(
             config["wxpy_pkl_path"],
             config["wxpy_puid_pkl_path"]
         )
+        # Filter out hidden MPs
+        _mp_cache = [mp for mp in all_mps if mp["name"] not in HIDDEN_MP_NAMES]
     return _mp_cache
 
 
