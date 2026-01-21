@@ -209,19 +209,15 @@
                 statusEl.textContent = '检查中...';
                 
                 try {
-                    const rssUrl = `${window.location.origin}/api/rss/${mp.puid}`;
-                    const res = await fetch(rssUrl);
-                    const text = await res.text();
-                    const parser = new DOMParser();
-                    const xml = parser.parseFromString(text, 'application/xml');
-                    const items = xml.querySelectorAll('item');
+                    const res = await fetch(`${window.location.origin}/api/has-articles/${mp.puid}`);
+                    const data = await res.json();
                     
-                    if (items.length === 0) {
+                    if (!data.has_articles) {
                         card.classList.add('mp-card-empty');
                         statusEl.textContent = '无文章';
                         empty++;
                     } else {
-                        statusEl.textContent = `${items.length} 篇`;
+                        statusEl.textContent = '有文章';
                         withArticles++;
                         reorderMps();
                     }

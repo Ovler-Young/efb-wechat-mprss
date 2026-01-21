@@ -123,6 +123,35 @@ def get_mp_message_count(db_path: str, puid: str) -> int:
     return count
 
 
+def has_articles_for_mp(db_path: str, puid: str) -> bool:
+    """
+    Check if a public account has any Link messages.
+    
+    Uses EXISTS for efficiency - stops as soon as one row is found.
+    """
+    slave_origin_uid = f"blueset.wechat {puid}"
+    
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    cursor.execute(
+        """
+        SELECT EXISTS(
+            SELECT 1 FROM msglog
+            WHERE slave_origin_uid = ?
+              AND msg_type = 'Link'
+            LIMIT 1
+        )
+        """,
+        (slave_origin_uid,)
+    )
+    
+    has_articles = cursor.fetchone()[0] == 1
+    conn.close()
+    
+    return has_articles
+
+
 if __name__ == "__main__":
     # Quick test
     import yaml

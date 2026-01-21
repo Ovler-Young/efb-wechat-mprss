@@ -13,7 +13,7 @@ from fastapi.responses import Response, HTMLResponse
 from pydantic import BaseModel
 
 from .data_loader import get_mps_with_puid
-from .db_reader import get_messages_for_mp
+from .db_reader import get_messages_for_mp, has_articles_for_mp
 from .rss_generator import generate_rss_feed
 
 
@@ -102,6 +102,29 @@ async def get_rss_feed(puid: str, request: Request, limit: int = 100):
         content=rss_xml,
         media_type="application/rss+xml; charset=utf-8"
     )
+
+
+@app.get("/api/has-articles/{puid}")
+async def check_has_articles(puid: str):
+    """
+    Check if a public account has any articles.
+    
+    Path params:
+        puid: The puid of the public account
+    
+    Returns:
+        {"has_articles": bool}
+    """
+    # Verify MP exists
+    mps = get_cached_mps()
+    mp_info = next((mp for mp in mps if mp["puid"] == puid), None)
+    
+    if not mp_info:
+        raise HTTPException(status_code=404, detail=f"Public account with puid '{puid}' not found")
+    
+    has_articles = has_articles_for_mp(config["tgdata_db_path"], puid)
+    
+    return {"has_articles": has_articles}
 
 
 # Serve frontend
