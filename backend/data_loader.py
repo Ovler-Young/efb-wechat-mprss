@@ -1,82 +1,136 @@
 """
 Data loader module for loading wxpy.pkl and wxpy_puid.pkl files.
 
-Note: Since the pickle files reference efb_wechat_slave module classes,
-we use the pre-extracted JSON files instead.
+Since efb_wechat_slave module is available in the runtime environment,
+we can directly load the pickle files.
 """
 
-import json
+import pickle
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 
-def load_json(path: str) -> Any:
-    """Load a JSON file."""
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def get_mp_list(wxpy_pkl_path: str) -> List[Dict[str, Any]]:
+def _fix_pickle_module_path(path: str) -> bytes:
     """
-    Extract mpList (public accounts) from wxpy extracted JSON.
+    Fix pickle module path migration issues.
     
-    Uses the pre-extracted JSON file (wxpy_extracted.json) instead of pkl
-    to avoid module dependency issues.
+    Older pickle files may reference:
+    - efb_wechat_slave.wxpy.utils.puid_map
+    - itchat.storage.templates
+    
+    Newer ones reference:
+    - efb_wechat_slave.vendor.wxpy.utils.puid_map
+    - efb_wechat_slave.vendor.itchat.storage.templates
+    
+    This function patches the binary content to use the newer module paths.
+    """
+    with open(path, "rb") as f:
+        data = f.read()
+    
+    # Fix wxpy module path
+    data = data.replace(
+        b"cefb_wechat_slave.wxpy.",
+        b"cefb_wechat_slave.vendor.wxpy."
+    )
+    # Fix itchat module path
+    data = data.replace(
+        b"citchat.",
+        b"cefb_wechat_slave.vendor.itchat."
+    )
+    
+    return data
+
+
+def load_wxpy_pkl(path: str) -> Dict[str, Any]:
+    """
+    Load wxpy.pkl and return the storage data.
+    
+    The pickle structure is:
+    {
+        'version': str,
+        'loginInfo': {...},
+        'cookies': {...},
+        'storage': {
+            'userName': str,
+            'nickName': str,
+            'memberList': ContactList,
+            'mpList': ContactList,  # This is what we need
+            'chatroomList': ContactList,
+            'lastInputUserName': str
+        }
+    }
     
     Returns:
-        List of MP dicts with UserName, NickName, Signature, HeadImgUrl, etc.
+        The storage dict from the pickle file.
     """
-    # Try to use the extracted JSON file instead
-    json_path = Path(wxpy_pkl_path).with_name("wxpy_extracted.json")
+    path = Path(path).expanduser()
+    if not path.exists():
+        raise FileNotFoundError(f"wxpy.pkl not found: {path}")
     
-    if json_path.exists():
-        data = load_json(str(json_path))
-    else:
-        raise FileNotFoundError(
-            f"JSON file not found: {json_path}. "
-            f"Please run extract_pkl.py to generate it."
-        )
+    fixed_data = _fix_pickle_module_path(str(path))
+    data = pickle.loads(fixed_data)
     
-    # The JSON file has a 'storage' key with 'mpList'
-    storage = data.get("storage", {})
-    mp_list = storage.get("mpList", [])
-    
-    return mp_list
+    return data.get("storage", {})
 
 
-def get_puid_map(wxpy_puid_pkl_path: str) -> Dict[str, str]:
+def load_puid_pkl(path: str) -> Dict[str, str]:
     """
-    Extract puid_map from wxpy_puid extracted JSON.
+    Load wxpy_puid.pkl and return UserName -> puid mapping.
     
-    The JSON structure is:
-    [{"__type__": "TwoWayDict", "__dict__": {"data": {UserName: puid, ...}}}]
+    The pickle structure is a tuple of 4 TwoWayDict:
+    (
+        user_names,    # UserName -> puid (this is what we need)
+        wxids,         # wxid -> puid
+        remark_names,  # remark_name -> puid
+        captions       # (nick_name, sex, province, city, signature) -> puid
+    )
+    
+    TwoWayDict inherits from UserDict, so .data gives us the underlying dict.
     
     Returns:
         Dict mapping UserName to puid.
     """
-    # Try to use the extracted JSON file instead
-    json_path = Path(wxpy_puid_pkl_path).with_name("wxpy_puid_extracted.json")
+    path = Path(path).expanduser()
+    if not path.exists():
+        raise FileNotFoundError(f"wxpy_puid.pkl not found: {path}")
     
-    if json_path.exists():
-        data = load_json(str(json_path))
-    else:
-        raise FileNotFoundError(
-            f"JSON file not found: {json_path}. "
-            f"Please run extract_pkl.py to generate it."
-        )
+    fixed_data = _fix_pickle_module_path(str(path))
+    data = pickle.loads(fixed_data)
     
-    # Handle the TwoWayDict structure: [{__type__, __dict__: {data: {...}}}]
-    if isinstance(data, list) and len(data) > 0:
-        first_item = data[0]
-        if isinstance(first_item, dict) and "__dict__" in first_item:
-            puid_map = first_item["__dict__"].get("data", {})
-            return puid_map
-    
-    # Fallback: try to get 'puid_map' key directly
-    if isinstance(data, dict):
-        return data.get("puid_map", {})
+    # data is a tuple: (user_names, wxids, remark_names, captions)
+    if isinstance(data, tuple) and len(data) >= 1:
+        user_names_dict = data[0]
+        # TwoWayDict inherits from UserDict, access .data for the underlying dict
+        if hasattr(user_names_dict, "data"):
+            return dict(user_names_dict.data)
+        # If it's already a plain dict
+        return dict(user_names_dict)
     
     return {}
+
+
+def get_mp_list(wxpy_pkl_path: str) -> List[Dict[str, Any]]:
+    """
+    Extract mpList (public accounts) from wxpy.pkl.
+    
+    Returns:
+        List of MP dicts with UserName, NickName, Signature, HeadImgUrl, etc.
+    """
+    storage = load_wxpy_pkl(wxpy_pkl_path)
+    mp_list = storage.get("mpList", [])
+    
+    # ContactList is a list-like object, convert to plain list of dicts
+    return [dict(mp) for mp in mp_list]
+
+
+def get_puid_map(wxpy_puid_pkl_path: str) -> Dict[str, str]:
+    """
+    Extract puid_map from wxpy_puid.pkl.
+    
+    Returns:
+        Dict mapping UserName to puid.
+    """
+    return load_puid_pkl(wxpy_puid_pkl_path)
 
 
 def get_mps_with_puid(
