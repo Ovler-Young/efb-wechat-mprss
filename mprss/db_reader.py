@@ -4,8 +4,6 @@ Database reader module for querying tgdata.db.
 
 import pickle
 import sqlite3
-from datetime import datetime
-from pathlib import Path
 from typing import List, Dict, Any, Optional
 
 

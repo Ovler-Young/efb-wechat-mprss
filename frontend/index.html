@@ -25,6 +25,15 @@
         <div class="stats-bar">
             <div class="stats" id="stats">正在加载...</div>
             <button id="check-btn" class="check-btn" onclick="checkAllMpsRss()" disabled>检测文章</button>
+            <button id="export-btn" class="check-btn" onclick="enterSelectionMode()" disabled>导出 OPML</button>
+        </div>
+
+        <div class="selection-bar">
+            <span class="selection-count" id="selection-count">已选择 0 个</span>
+            <button onclick="selectAll()">全选</button>
+            <button onclick="deselectAll()">取消全选</button>
+            <button class="export-btn" id="confirm-export-btn" onclick="exportSelectedOpml()" disabled>导出选中</button>
+            <button onclick="exitSelectionMode()">取消</button>
         </div>
 
         <div class="mp-grid" id="mp-grid">
@@ -78,7 +87,7 @@
         function renderMps(mps) {
             const grid = document.getElementById('mp-grid');
             grid.innerHTML = mps.map(mp => `
-                <div class="mp-card" data-puid="${mp.puid}" onclick="showRssModal('${mp.puid}')">
+                <div class="mp-card" data-puid="${mp.puid}" onclick="handleCardClick('${mp.puid}')">
                     <div class="mp-info">
                         <h3>${escapeHtml(mp.name)}</h3>
                         <p>${escapeHtml(mp.signature || '暂无简介')}</p>
@@ -86,6 +95,98 @@
                     <span class="mp-status"></span>
                 </div>
             `).join('');
+        }
+        
+        // Selection mode state
+        let selectionMode = false;
+        let selectedPuids = new Set();
+        let articleCheckDone = false;
+        
+        function handleCardClick(puid) {
+            if (selectionMode) {
+                toggleSelect(puid);
+            } else {
+                showRssModal(puid);
+            }
+        }
+        
+        function enterSelectionMode() {
+            if (!articleCheckDone) {
+                alert('请先点击"检测文章"后再导出');
+                return;
+            }
+            selectionMode = true;
+            selectedPuids.clear();
+            document.querySelector('.container').classList.add('selection-mode');
+            updateSelectionCount();
+        }
+        
+        function exitSelectionMode() {
+            selectionMode = false;
+            selectedPuids.clear();
+            document.querySelector('.container').classList.remove('selection-mode');
+            document.querySelectorAll('.mp-card.selected').forEach(c => c.classList.remove('selected'));
+        }
+        
+        function toggleSelect(puid) {
+            const card = document.querySelector(`.mp-card[data-puid="${puid}"]`);
+            if (!card) return;
+            
+            if (selectedPuids.has(puid)) {
+                selectedPuids.delete(puid);
+                card.classList.remove('selected');
+            } else {
+                selectedPuids.add(puid);
+                card.classList.add('selected');
+            }
+            updateSelectionCount();
+        }
+        
+        function selectAll() {
+            document.querySelectorAll('.mp-card:not(.mp-card-empty)').forEach(card => {
+                const puid = card.dataset.puid;
+                selectedPuids.add(puid);
+                card.classList.add('selected');
+            });
+            updateSelectionCount();
+        }
+        
+        function deselectAll() {
+            selectedPuids.clear();
+            document.querySelectorAll('.mp-card.selected').forEach(c => c.classList.remove('selected'));
+            updateSelectionCount();
+        }
+        
+        function updateSelectionCount() {
+            const count = selectedPuids.size;
+            document.getElementById('selection-count').textContent = `已选择 ${count} 个`;
+            document.getElementById('confirm-export-btn').disabled = count === 0;
+        }
+        
+        async function exportSelectedOpml() {
+            if (selectedPuids.size === 0) return;
+            
+            try {
+                const res = await fetch('/api/opml', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ puids: Array.from(selectedPuids) })
+                });
+                
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'wechat-mp-feeds.opml';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                exitSelectionMode();
+            } catch (err) {
+                alert('导出失败: ' + err.message);
+            }
         }
         
 
@@ -120,12 +221,20 @@
             }
         }
         
-        function copyRssUrl() {
+        async function copyRssUrl() {
             const input = document.getElementById('rss-url');
-            input.select();
-            document.execCommand('copy');
-            document.getElementById('copy-hint').textContent = '✓ 已复制到剪贴板';
+            try {
+                await navigator.clipboard.writeText(input.value);
+                document.getElementById('copy-hint').textContent = '✓ 已复制到剪贴板';
+            } catch (err) {
+                // Fallback for older browsers or non-HTTPS
+                input.select();
+                document.execCommand('copy');
+                document.getElementById('copy-hint').textContent = '✓ 已复制到剪贴板';
+            }
         }
+        
+
         
         async function loadRssPreview() {
             const rssUrl = document.getElementById('rss-url').value;
@@ -216,6 +325,8 @@
                 }
                 
                 reorderMps();
+                articleCheckDone = true;
+                document.getElementById('export-btn').disabled = false;
                 document.getElementById('stats').textContent = 
                     `共 ${total} 个公众号 | 有文章: ${withArticles} | 无文章: ${empty}`;
             } catch (err) {

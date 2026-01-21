@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from .data_loader import get_mps_with_puid
 from .db_reader import get_messages_for_mp, has_articles_for_mp, batch_has_articles, batch_article_counts
 from .rss_generator import generate_rss_feed
+from .opml_generator import generate_opml
 
 
 # Load config: prefer CONFIG_PATH env var, then current working directory
@@ -162,6 +163,40 @@ async def get_article_counts_batch():
     result = batch_article_counts(config["tgdata_db_path"], puids)
     
     return result
+
+
+class ExportOpmlRequest(BaseModel):
+    puids: Optional[List[str]] = None
+
+
+@app.post("/api/opml")
+async def export_opml(request: Request, body: ExportOpmlRequest = None):
+    """
+    Export public accounts as OPML file for bulk import into RSS readers.
+    
+    Body (optional):
+        puids: List of puids to export. If omitted or empty, exports all.
+    
+    Returns:
+        OPML 2.0 XML file download
+    """
+    mps = get_cached_mps()
+    
+    # Filter by puids if provided
+    if body and body.puids:
+        puid_set = set(body.puids)
+        mps = [mp for mp in mps if mp["puid"] in puid_set]
+    
+    base_url = str(request.base_url).rstrip("/")
+    opml_xml = generate_opml(mps, base_url)
+    
+    return Response(
+        content=opml_xml,
+        media_type="application/xml",
+        headers={
+            "Content-Disposition": "attachment; filename=wechat-mp-feeds.opml"
+        }
+    )
 
 
 # Serve frontend
