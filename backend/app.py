@@ -2,6 +2,7 @@
 FastAPI application for WeChat MP RSS Generator.
 """
 
+import os
 from pathlib import Path
 from typing import List, Optional
 
@@ -15,8 +16,8 @@ from .db_reader import get_messages_for_mp
 from .rss_generator import generate_rss_feed
 
 
-# Load config
-CONFIG_PATH = Path(__file__).parent.parent / "config.yaml"
+# Load config: prefer CONFIG_PATH env var, then current working directory
+CONFIG_PATH = Path(os.environ.get("CONFIG_PATH", Path.cwd() / "config.yaml"))
 with open(CONFIG_PATH, "r", encoding="utf-8") as f:
     config = yaml.safe_load(f)
 
@@ -103,7 +104,7 @@ async def get_rss_feed(puid: str, request: Request, limit: int = 100):
 
 
 # Serve frontend
-FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
+FRONTEND_DIR = Path(os.environ.get("FRONTEND_DIR", Path.cwd() / "frontend"))
 
 
 @app.get("/", response_class=HTMLResponse)
