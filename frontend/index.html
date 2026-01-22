@@ -33,7 +33,7 @@
             <span class="selection-count" id="selection-count">已选择 0 个</span>
             <button onclick="selectAll()">全选</button>
             <button onclick="deselectAll()">取消全选</button>
-            <input type="text" id="url-prefix-input" placeholder="全文代理前缀 (可选, 如 https://morss.example.com/)" title="设置后 RSS 地址会变为 前缀/域名/api/rss/puid 格式">
+            <button class="settings-btn" onclick="openExportSettings()">⚙ 设置</button>
             <button class="export-btn" id="confirm-export-btn" onclick="exportSelectedOpml()" disabled>导出选中</button>
             <button onclick="exitSelectionMode()">取消</button>
         </div>
@@ -88,6 +88,24 @@
             <div class="context-menu-title">选择标签</div>
             <div class="context-menu-items" id="context-menu-items">
                 <!-- Tag options will be inserted here -->
+            </div>
+        </div>
+
+        <!-- Export Settings Modal -->
+        <div class="modal" id="export-settings-modal" onclick="closeExportSettings(event)">
+            <div class="modal-content tag-manager-content" onclick="event.stopPropagation()">
+                <span class="close-btn" onclick="closeExportSettings()">&times;</span>
+                <h2>导出设置</h2>
+                <div class="settings-section">
+                    <label for="url-prefix-input">全文代理前缀 (可选)</label>
+                    <p class="settings-hint">设置后 RSS 地址将变为：前缀/域名/api/rss/puid</p>
+                    <input type="text" id="url-prefix-input" placeholder="例如 https://morss.example.com/">
+                    <p class="settings-example" id="prefix-preview"></p>
+                </div>
+                <div class="settings-actions">
+                    <button class="settings-clear" onclick="clearUrlPrefix()">清除</button>
+                    <button class="settings-save" onclick="saveExportSettings()">保存</button>
+                </div>
             </div>
         </div>
 
@@ -229,7 +247,7 @@
                     body: JSON.stringify({ 
                         puids: Array.from(selectedPuids),
                         groups: Object.keys(groups).length > 0 ? groups : null,
-                        url_prefix: document.getElementById('url-prefix-input').value.trim() || null
+                        url_prefix: localStorage.getItem('opmlUrlPrefix') || null
                     })
                 });
                 
@@ -248,6 +266,53 @@
                 alert('导出失败: ' + err.message);
             }
         }
+        
+        // ===== Export Settings =====
+        function openExportSettings() {
+            const savedPrefix = localStorage.getItem('opmlUrlPrefix') || '';
+            document.getElementById('url-prefix-input').value = savedPrefix;
+            updatePrefixPreview();
+            document.getElementById('export-settings-modal').classList.add('show');
+        }
+        
+        function closeExportSettings(event) {
+            if (!event || event.target.id === 'export-settings-modal') {
+                document.getElementById('export-settings-modal').classList.remove('show');
+            }
+        }
+        
+        function updatePrefixPreview() {
+            const prefix = document.getElementById('url-prefix-input').value.trim();
+            const previewEl = document.getElementById('prefix-preview');
+            if (prefix) {
+                const domain = window.location.host;
+                previewEl.textContent = `示例: ${prefix.replace(/\/$/, '')}/${domain}/api/rss/xxx`;
+                previewEl.style.display = 'block';
+            } else {
+                previewEl.style.display = 'none';
+            }
+        }
+        
+        function saveExportSettings() {
+            const prefix = document.getElementById('url-prefix-input').value.trim();
+            if (prefix) {
+                localStorage.setItem('opmlUrlPrefix', prefix);
+            } else {
+                localStorage.removeItem('opmlUrlPrefix');
+            }
+            closeExportSettings();
+        }
+        
+        function clearUrlPrefix() {
+            document.getElementById('url-prefix-input').value = '';
+            updatePrefixPreview();
+        }
+        
+        // Update preview on input
+        document.addEventListener('DOMContentLoaded', () => {
+            const input = document.getElementById('url-prefix-input');
+            if (input) input.addEventListener('input', updatePrefixPreview);
+        });
         
         // ===== Tag Manager =====
         function openTagManager() {
