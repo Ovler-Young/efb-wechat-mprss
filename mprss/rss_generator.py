@@ -72,7 +72,11 @@ def generate_rss_feed(
         
         # Include image in description if available
         if image_url:
-            description = f'<img src="{image_url}" /><br/>{description}'
+            if "telegra.ph" in image_url:
+                # Telegraph links are article pages, not direct images
+                description = f'<a href="{image_url}">[Telegraph]</a><br/>{description}'
+            else:
+                description = f'<img src="{image_url}" /><br/>{description}'
         item_desc.text = description
         
         # GUID - use URL as stable identifier
