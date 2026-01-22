@@ -317,6 +317,7 @@
             html += tagList.map(tag => 
                 `<div class="context-menu-item ${currentTag === tag ? 'active' : ''}" onclick="setMpTag('${escapeHtml(tag)}')">${escapeHtml(tag)}</div>`
             ).join('');
+            html += `<div class="context-menu-item context-menu-add" onclick="addTagFromMenu()">+ 新标签</div>`;
             items.innerHTML = html;
             
             // Position menu
@@ -333,6 +334,19 @@
         function hideContextMenu() {
             document.getElementById('context-menu').classList.remove('show');
             contextMenuPuid = null;
+        }
+        
+        function addTagFromMenu() {
+            const name = prompt('输入新标签名称:');
+            if (!name || !name.trim()) {
+                hideContextMenu();
+                return;
+            }
+            const trimmed = name.trim();
+            if (!tagList.includes(trimmed)) {
+                tagList.push(trimmed);
+            }
+            setMpTag(trimmed);
         }
         
         function setMpTag(tag) {
