@@ -5,7 +5,7 @@ FastAPI application for WeChat MP RSS Generator.
 import importlib.resources
 import os
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import yaml
 from fastapi import FastAPI, HTTPException, Request
@@ -167,6 +167,7 @@ async def get_article_counts_batch():
 
 class ExportOpmlRequest(BaseModel):
     puids: Optional[List[str]] = None
+    groups: Optional[Dict[str, str]] = None  # puid -> tag name
 
 
 @app.post("/api/opml")
@@ -176,6 +177,7 @@ async def export_opml(request: Request, body: ExportOpmlRequest = None):
     
     Body (optional):
         puids: List of puids to export. If omitted or empty, exports all.
+        groups: Dict mapping puid to tag name for grouping. Untagged -> "All".
     
     Returns:
         OPML 2.0 XML file download
@@ -188,7 +190,7 @@ async def export_opml(request: Request, body: ExportOpmlRequest = None):
         mps = [mp for mp in mps if mp["puid"] in puid_set]
     
     base_url = str(request.base_url).rstrip("/")
-    opml_xml = generate_opml(mps, base_url)
+    opml_xml = generate_opml(mps, base_url, groups=body.groups if body else None)
     
     return Response(
         content=opml_xml,

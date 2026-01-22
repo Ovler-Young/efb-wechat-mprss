@@ -25,6 +25,7 @@
         <div class="stats-bar">
             <div class="stats" id="stats">正在加载...</div>
             <button id="check-btn" class="check-btn" onclick="checkAllMpsRss()" disabled>检测文章</button>
+            <button id="manage-tags-btn" class="check-btn" onclick="openTagManager()">管理标签</button>
             <button id="export-btn" class="check-btn" onclick="enterSelectionMode()" disabled>导出 OPML</button>
         </div>
 
@@ -66,11 +67,42 @@
             </div>
         </div>
 
+        <!-- Tag Manager Modal -->
+        <div class="modal" id="tag-modal" onclick="closeTagManager(event)">
+            <div class="modal-content tag-manager-content" onclick="event.stopPropagation()">
+                <span class="close-btn" onclick="closeTagManager()">&times;</span>
+                <h2>管理标签</h2>
+                <div class="tag-input-row">
+                    <input type="text" id="new-tag-input" placeholder="输入新标签名称..." onkeypress="if(event.key==='Enter')addTag()">
+                    <button onclick="addTag()">添加</button>
+                </div>
+                <div class="tag-list" id="tag-list">
+                    <!-- Tags will be inserted here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Context Menu for Tag Selection -->
+        <div class="context-menu" id="context-menu">
+            <div class="context-menu-title">选择标签</div>
+            <div class="context-menu-items" id="context-menu-items">
+                <!-- Tag options will be inserted here -->
+            </div>
+        </div>
 
     </div>
 
     <script>
         let allMps = [];
+        
+        // Tag storage
+        let tagList = JSON.parse(localStorage.getItem('mpTagList') || '[]');
+        let mpTags = JSON.parse(localStorage.getItem('mpTags') || '{}');
+        
+        function saveTags() {
+            localStorage.setItem('mpTagList', JSON.stringify(tagList));
+            localStorage.setItem('mpTags', JSON.stringify(mpTags));
+        }
         
         async function loadMps() {
             try {
@@ -86,15 +118,19 @@
         
         function renderMps(mps) {
             const grid = document.getElementById('mp-grid');
-            grid.innerHTML = mps.map(mp => `
-                <div class="mp-card" data-puid="${mp.puid}" onclick="handleCardClick('${mp.puid}')">
+            grid.innerHTML = mps.map(mp => {
+                const tag = mpTags[mp.puid] || '';
+                const tagHtml = tag ? `<span class="mp-tag">${escapeHtml(tag)}</span>` : '';
+                return `
+                <div class="mp-card" data-puid="${mp.puid}" onclick="handleCardClick('${mp.puid}')" oncontextmenu="showContextMenu(event, '${mp.puid}')">
                     <div class="mp-info">
                         <h3>${escapeHtml(mp.name)}</h3>
                         <p>${escapeHtml(mp.signature || '暂无简介')}</p>
                     </div>
+                    ${tagHtml}
                     <span class="mp-status"></span>
                 </div>
-            `).join('');
+            `}).join('');
         }
         
         // Selection mode state
@@ -166,11 +202,23 @@
         async function exportSelectedOpml() {
             if (selectedPuids.size === 0) return;
             
+            // Build groups object for selected puids
+            const groups = {};
+            for (const puid of selectedPuids) {
+                if (mpTags[puid]) {
+                    groups[puid] = mpTags[puid];
+                }
+                // If no tag, it will be placed in "All" by backend
+            }
+            
             try {
                 const res = await fetch('/api/opml', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ puids: Array.from(selectedPuids) })
+                    body: JSON.stringify({ 
+                        puids: Array.from(selectedPuids),
+                        groups: Object.keys(groups).length > 0 ? groups : null
+                    })
                 });
                 
                 const blob = await res.blob();
@@ -189,6 +237,118 @@
             }
         }
         
+        // ===== Tag Manager =====
+        function openTagManager() {
+            renderTagList();
+            document.getElementById('tag-modal').classList.add('show');
+        }
+        
+        function closeTagManager(event) {
+            if (!event || event.target.id === 'tag-modal') {
+                document.getElementById('tag-modal').classList.remove('show');
+            }
+        }
+        
+        function renderTagList() {
+            const list = document.getElementById('tag-list');
+            if (tagList.length === 0) {
+                list.innerHTML = '<p class="tag-empty">暂无标签，请添加</p>';
+                return;
+            }
+            list.innerHTML = tagList.map(tag => `
+                <div class="tag-item">
+                    <span>${escapeHtml(tag)}</span>
+                    <button class="tag-delete-btn" onclick="deleteTag('${escapeHtml(tag)}')">&times;</button>
+                </div>
+            `).join('');
+        }
+        
+        function addTag() {
+            const input = document.getElementById('new-tag-input');
+            const name = input.value.trim();
+            if (!name) return;
+            if (tagList.includes(name)) {
+                alert('标签已存在');
+                return;
+            }
+            tagList.push(name);
+            saveTags();
+            renderTagList();
+            input.value = '';
+        }
+        
+        function deleteTag(name) {
+            if (!confirm(`确定删除标签 "${name}"？已分配该标签的公众号将变为未分类。`)) return;
+            tagList = tagList.filter(t => t !== name);
+            // Remove tag from all MPs that had it
+            for (const puid in mpTags) {
+                if (mpTags[puid] === name) {
+                    delete mpTags[puid];
+                }
+            }
+            saveTags();
+            renderTagList();
+            renderMps(allMps);
+        }
+        
+        // ===== Context Menu =====
+        let contextMenuPuid = null;
+        
+        function showContextMenu(event, puid) {
+            event.preventDefault();
+            contextMenuPuid = puid;
+            
+            const menu = document.getElementById('context-menu');
+            const items = document.getElementById('context-menu-items');
+            
+            // Build menu items
+            const currentTag = mpTags[puid] || '';
+            let html = `<div class="context-menu-item ${!currentTag ? 'active' : ''}" onclick="setMpTag(null)">无标签 (All)</div>`;
+            html += tagList.map(tag => 
+                `<div class="context-menu-item ${currentTag === tag ? 'active' : ''}" onclick="setMpTag('${escapeHtml(tag)}')">${escapeHtml(tag)}</div>`
+            ).join('');
+            items.innerHTML = html;
+            
+            // Position menu
+            menu.style.left = event.pageX + 'px';
+            menu.style.top = event.pageY + 'px';
+            menu.classList.add('show');
+            
+            // Close on next click
+            setTimeout(() => {
+                document.addEventListener('click', hideContextMenu, { once: true });
+            }, 0);
+        }
+        
+        function hideContextMenu() {
+            document.getElementById('context-menu').classList.remove('show');
+            contextMenuPuid = null;
+        }
+        
+        function setMpTag(tag) {
+            if (!contextMenuPuid) return;
+            if (tag) {
+                mpTags[contextMenuPuid] = tag;
+            } else {
+                delete mpTags[contextMenuPuid];
+            }
+            saveTags();
+            
+            // Update card display
+            const card = document.querySelector(`.mp-card[data-puid="${contextMenuPuid}"]`);
+            if (card) {
+                const existingTag = card.querySelector('.mp-tag');
+                if (existingTag) existingTag.remove();
+                if (tag) {
+                    const tagEl = document.createElement('span');
+                    tagEl.className = 'mp-tag';
+                    tagEl.textContent = tag;
+                    card.appendChild(tagEl);
+                }
+            }
+            
+            hideContextMenu();
+        }
 
         
         function escapeHtml(text) {
@@ -286,7 +446,11 @@
         
         // Close modal on Escape key
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closeModal();
+            if (e.key === 'Escape') {
+                closeModal();
+                closeTagManager();
+                hideContextMenu();
+            }
         });
         
         // Initial load
