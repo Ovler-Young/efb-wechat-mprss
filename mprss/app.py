@@ -32,7 +32,7 @@ app = FastAPI(
 
 
 # Hidden MP names - these will be excluded and always return "no articles"
-HIDDEN_MP_NAMES = {"微信支付", "微信收款助手"}
+HIDDEN_MP_NAMES = {"微信支付", "微信收款助手", "公众平台安全助手", "腾讯兔小巢", "智慧课堂100"}
 
 
 # Cache for MP list (reloaded on startup or refresh)
