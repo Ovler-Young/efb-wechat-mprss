@@ -154,6 +154,16 @@
             selectionMode = true;
             selectedPuids.clear();
             document.querySelector('.container').classList.add('selection-mode');
+            
+            // Auto-select all MPs with tags
+            for (const puid in mpTags) {
+                const card = document.querySelector(`.mp-card[data-puid="${puid}"]`);
+                if (card && !card.classList.contains('mp-card-empty')) {
+                    selectedPuids.add(puid);
+                    card.classList.add('selected');
+                }
+            }
+            
             updateSelectionCount();
         }
         
