@@ -33,6 +33,7 @@
             <span class="selection-count" id="selection-count">已选择 0 个</span>
             <button onclick="selectAll()">全选</button>
             <button onclick="deselectAll()">取消全选</button>
+            <input type="text" id="url-prefix-input" placeholder="全文代理前缀 (可选, 如 https://morss.example.com/)" title="设置后 RSS 地址会变为 前缀/域名/api/rss/puid 格式">
             <button class="export-btn" id="confirm-export-btn" onclick="exportSelectedOpml()" disabled>导出选中</button>
             <button onclick="exitSelectionMode()">取消</button>
         </div>
@@ -227,7 +228,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         puids: Array.from(selectedPuids),
-                        groups: Object.keys(groups).length > 0 ? groups : null
+                        groups: Object.keys(groups).length > 0 ? groups : null,
+                        url_prefix: document.getElementById('url-prefix-input').value.trim() || null
                     })
                 });
                 

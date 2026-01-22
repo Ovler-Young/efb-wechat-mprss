@@ -13,7 +13,8 @@ def generate_opml(
     mps: List[Dict[str, Any]],
     base_url: str,
     title: str = "WeChat MP RSS Feeds",
-    groups: Optional[Dict[str, str]] = None
+    groups: Optional[Dict[str, str]] = None,
+    url_prefix: Optional[str] = None
 ) -> str:
     """
     Generate OPML 2.0 XML for all public accounts.
@@ -23,6 +24,8 @@ def generate_opml(
         base_url: Base URL for RSS feeds (e.g., http://localhost:8080)
         title: Title for the OPML document
         groups: Optional dict mapping puid -> tag name for grouping
+        url_prefix: Optional URL prefix for full-text proxy (e.g., https://morss.example.com/)
+                    When set, feed URL becomes {prefix}{base_url_without_scheme}/api/rss/{puid}
     
     Returns:
         OPML 2.0 XML string
@@ -60,11 +63,11 @@ def generate_opml(
             group_outline.set("text", tag)
             
             for mp in tag_to_mps[tag]:
-                _add_mp_outline(group_outline, mp, base_url)
+                _add_mp_outline(group_outline, mp, base_url, url_prefix)
     else:
         # No grouping - flat structure
         for mp in mps:
-            _add_mp_outline(body, mp, base_url)
+            _add_mp_outline(body, mp, base_url, url_prefix)
     
     # Pretty print XML
     xml_str = tostring(opml, encoding="unicode")
@@ -72,13 +75,25 @@ def generate_opml(
     return dom.toprettyxml(indent="  ", encoding=None)
 
 
-def _add_mp_outline(parent: Element, mp: Dict[str, Any], base_url: str) -> None:
+def _add_mp_outline(
+    parent: Element,
+    mp: Dict[str, Any],
+    base_url: str,
+    url_prefix: Optional[str] = None
+) -> None:
     """Add a single MP outline element to parent."""
     puid = mp.get("puid", "")
     name = mp.get("name", "Unknown")
     signature = mp.get("signature", "")
     
-    feed_url = f"{base_url}/api/rss/{puid}"
+    # Build feed URL with optional prefix for full-text proxy
+    if url_prefix:
+        # Remove scheme from base_url for prefix pattern
+        # e.g., https://rsswechat.180811.xyz -> rsswechat.180811.xyz
+        base_without_scheme = base_url.split("://", 1)[-1]
+        feed_url = f"{url_prefix.rstrip('/')}/{base_without_scheme}/api/rss/{puid}"
+    else:
+        feed_url = f"{base_url}/api/rss/{puid}"
     
     outline = SubElement(parent, "outline")
     outline.set("type", "rss")

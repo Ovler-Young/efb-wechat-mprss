@@ -491,6 +491,28 @@ header h1 {
     color: #fca5a5;
 }
 
+/* URL Prefix input in selection bar */
+.selection-bar input[type="text"] {
+    padding: 0.4rem 0.8rem;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 16px;
+    color: white;
+    font-size: 0.8rem;
+    width: 280px;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.selection-bar input[type="text"]::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.selection-bar input[type="text"]:focus {
+    background: rgba(255, 255, 255, 0.18);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
 
 /* ===== MP Tag Badge ===== */
 .mp-tag {

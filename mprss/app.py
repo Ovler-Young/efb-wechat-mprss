@@ -168,6 +168,7 @@ async def get_article_counts_batch():
 class ExportOpmlRequest(BaseModel):
     puids: Optional[List[str]] = None
     groups: Optional[Dict[str, str]] = None  # puid -> tag name
+    url_prefix: Optional[str] = None  # Full-text proxy prefix, e.g., https://morss.example.com/
 
 
 @app.post("/api/opml")
@@ -178,6 +179,8 @@ async def export_opml(request: Request, body: ExportOpmlRequest = None):
     Body (optional):
         puids: List of puids to export. If omitted or empty, exports all.
         groups: Dict mapping puid to tag name for grouping. Untagged -> "All".
+        url_prefix: Full-text proxy prefix (e.g., https://morss.example.com/)
+                    When set, feed URLs become {prefix}{base_domain}/api/rss/{puid}
     
     Returns:
         OPML 2.0 XML file download
@@ -190,7 +193,12 @@ async def export_opml(request: Request, body: ExportOpmlRequest = None):
         mps = [mp for mp in mps if mp["puid"] in puid_set]
     
     base_url = str(request.base_url).rstrip("/")
-    opml_xml = generate_opml(mps, base_url, groups=body.groups if body else None)
+    opml_xml = generate_opml(
+        mps,
+        base_url,
+        groups=body.groups if body else None,
+        url_prefix=body.url_prefix if body else None
+    )
     
     return Response(
         content=opml_xml,
