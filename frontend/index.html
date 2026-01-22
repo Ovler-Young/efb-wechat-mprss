@@ -310,8 +310,8 @@
             items.innerHTML = html;
             
             // Position menu
-            menu.style.left = event.pageX + 'px';
-            menu.style.top = event.pageY + 'px';
+            menu.style.left = event.clientX + 'px';
+            menu.style.top = event.clientY + 'px';
             menu.classList.add('show');
             
             // Close on next click
